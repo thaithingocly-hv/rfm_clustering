@@ -114,6 +114,13 @@ for k in k_range: # Silhouette score is not defined for k=1
     model = kmeans.fit(df_kmeans)
     sse[k] = kmeans.inertia_ # SSE to closest cluster centroid
     
+    # silhouette
+    predictions = model.transform(df_kmeans)
+
+    # Evaluate clustering by computing Silhouette score
+    silhouette_score(df_kmeans, kmeans.fit_predict(df_kmeans))
+    silhouette_list.append(silhouette_score(df_kmeans, kmeans.fit_predict(df_kmeans)))
+    
 # Build model with k=5
 start_time = time.time()
 model = KMeans(n_clusters=5, random_state=42)
@@ -149,6 +156,39 @@ print("\n📊 Evaluating K-Means Performance:")
 silhouette_avg = silhouette_score(df_kmeans, model.labels_, metric='euclidean')
 db_score = davies_bouldin_score(df_kmeans, model.labels_)
 ch_score = calinski_harabasz_score(df_kmeans, model.labels_)
+
+#### RFM + Hierachical clustering
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.preprocessing import MinMaxScaler
+import scipy.cluster.hierarchy as shc
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as PathEffects
+
+df_hc = df_RFM[['Recency','Frequency','Monetary']]
+
+start_time = time.time()
+cluster = AgglomerativeClustering(n_clusters=5, linkage='ward')
+labels = cluster.fit_predict(df_hc)
+df_hc["Cluster"] = labels
+processing_time.append(time.time() - start_time)
+
+# Calculate average values for each RFM_Level, and return a size of each segment
+rfm_agg3 = df_hc.groupby('Cluster').agg({
+    'Recency': 'mean',
+    'Frequency': 'mean',
+    'Monetary': ['mean', 'count']}).round(0)
+
+rfm_agg3.columns = rfm_agg3.columns.droplevel()
+rfm_agg3.columns = ['RecencyMean','FrequencyMean','MonetaryMean', 'Count']
+rfm_agg3['Percent'] = round((rfm_agg3['Count']/rfm_agg3.Count.sum())*100, 2)
+
+# Reset the index
+rfm_agg3 = rfm_agg3.reset_index()
+
+# Change thr Cluster Columns Datatype into discrete values
+rfm_agg3['Cluster'] = 'Cluster '+ rfm_agg3['Cluster'].astype('str')
+
+
 
 # ==== GUI ==== 
 def footer():
@@ -186,7 +226,7 @@ if choice == "Giới thiệu đề tài":
         st.markdown("**Vấn đề khai phá dữ liệu**<br/> - Phân khúc khách hàng bằng RFM", unsafe_allow_html=True)
 
     home_page()
-elif choice == "Thu thập và hiểu dữ liệu":
+elif choice == "Hiểu dữ liệu":
     st.write("Thu thập và hiểu dữ liệu |")
     st.write("Dữ liệu giao dịch")
     st.dataframe(df_trans.head())
@@ -261,39 +301,41 @@ elif choice == "Xây dựng mô hình":
 
         plt.title("Phân khúc khách hàng theo mô hình RFM", fontsize=12)
         plt.axis('off')
-        st.pyplot(fig)
+        st.pyplot(fig, clear_figure=True)
 
         # fig1 = px.scatter(df_rfm_agg, x="RecencyMean", y="FrequencyMean", size="MonetaryMean", color="RFM_Level",
         #    hover_name="RFM_Level", size_max=60)
-        # st.pyplot(fig1)
+        # st.pyplot(fig1, clear_figure=True)
     with tab2:
         #st.subheader("Phân khúc khách hàng theo mô hình RFM + KMeans")
         st.write("Dữ liệu đầu vào")
         st.dataframe(df_kmeans.tail())
         st.write("Tìm số cụm")
-        fg2 = plt.figure(figsize=(10, 6))
-        plt.subplot(1,2,1)
-        plt.title('The Elbow Method')
-        plt.xlabel('k')
-        plt.ylabel('SSE')
+        col1, col2 = st.columns(2)
+        with col1:
+            fg21 = plt.figure(figsize=(10, 6))
+            plt.title('The Elbow Method')
+            plt.xlabel('k')
+            plt.ylabel('SSE')
 
-        plt.plot(list(sse.keys()), list(sse.values()), marker='o')
-        plt.grid(True, alpha=0.3)
-
-        plt.subplot(1,2,2)
-        plt.title('Silhouette Score')
-        plt.xlabel('k')
-        plt.ylabel('Silhouette')
-        plt.plot(k_range, silhouette_list, 'bo-', linewidth=2, markersize=8, color='red')
-        plt.grid(True, alpha=0.3)
-        st.pyplot(fg2)
+            plt.plot(list(sse.keys()), list(sse.values()), marker='o')
+            plt.grid(True, alpha=0.3)
+            st.pyplot(fg21, clear_figure=True   )
+        with col2:
+            fg22 = plt.figure(figsize=(10, 6))
+            plt.title('Silhouette Score')
+            plt.xlabel('k')
+            plt.ylabel('Silhouette')
+            plt.plot(k_range, silhouette_list, 'bo-', linewidth=2, markersize=8, color='red')
+            plt.grid(True, alpha=0.3)
+            st.pyplot(fg22, clear_figure=True   )
         
         st.write("Kết quả phân cụm với K=5")
         st.dataframe(df_kmeans.head())
         
-        fig4 = plt.gcf()
-        ax = fig4.add_subplot()
-        fig4.set_size_inches(14, 10)
+        fig3 = plt.gcf()
+        ax = fig3.add_subplot()
+        fig3.set_size_inches(14, 10)
 
         colors_dict2 = {'Cluster0':'yellow','Cluster1':'royalblue', 'Cluster2':'cyan','Cluster3':'red', 'Cluster4':'purple', }
 
@@ -305,16 +347,48 @@ elif choice == "Xây dựng mô hình":
 
         plt.title("KMeans-RFM Segments",fontsize=13)
         plt.axis('off')
-        st.pyplot(fig4)
+        st.pyplot(fig3, clear_figure=True)
         
     with tab3:
-        st.subheader("Phân khúc khách hàng theo mô hình RFM + Hierachical clustering")
+        fig4 = plt.figure(figsize=(20, 7))
+        plt.title("Customer Dendograms")
+        dend = shc.dendrogram(shc.linkage(df_hc, method='ward'))
+        plt.axhline(200, linestyle='--')
+        plt.xlabel('sample indice')
+        plt.ylabel('dissimilarity metric cluster')
+        st.pyplot(fig4, clear_figure=True)
+        
+        st.dataframe(df_hc['Cluster'].value_counts())
+        st.write("Bảng được phân cụm")
+        st.dataframe(df_hc.head())
+        
+        #Create our plot and resize it.
+        fig5 = plt.gcf()
+        ax = fig5.add_subplot()
+        fig5.set_size_inches(14, 10)
 
-    st.write(f"Silhouette Score: {silhouette_avg:.4f}")
-    st.write(f"Davies-Bouldin Index: {db_score:.4f} (lower is better)")
-    st.write(f"Calinski-Harabasz Index: {ch_score:.2f} (higher is better)")
+        colors_dict3 = {'Cluster0':'yellow','Cluster1':'royalblue', 'Cluster2':'cyan',
+                    'Cluster3':'red', 'Cluster4':'purple'}
+
+        squarify.plot(sizes=rfm_agg3['Count'],
+                    text_kwargs={'fontsize':10,'weight':'bold', 'fontname':"sans serif"},
+                    color=colors_dict3.values(),
+                    label=['{} \n{:.0f} days \n{:.0f} transactions \n{:.0f} $ \n{:.0f} customers ({}%)'.format(*rfm_agg3.iloc[i])
+                            for i in range(0, len(rfm_agg3))], alpha=0.5 )
+        plt.title("Hierachical-RFM Segments",fontsize=22,fontweight="bold")
+        plt.axis('off')
+        st.pyplot(fig5, clear_figure=True)
+
+    # st.markdown("**Đánh giá tổng hợp**")
+    # st.write(f"Silhouette Score: {silhouette_avg:.4f}")
+    # st.write(f"Davies-Bouldin Index: {db_score:.4f} (lower is better)")
+    # st.write(f"Calinski-Harabasz Index: {ch_score:.2f} (higher is better)")
 elif choice == "Dự đoán và đánh giá":
     st.write("Dự đoán và đánh giá |")
+    st.subheader("**Cung cấp dữ liệu**")
+    r = st.slider("Thời gian gần đây", 1, 700, 20)
+    f = st.slider("Số lượng giao dịch", 1, 700, 20)
+    m = st.slider("Tổng giá trị giao dịch", 1, 700, 20)
 
 st.sidebar.markdown("""<div style="text-align: center;">09.2025</div>""", unsafe_allow_html=True)
 # main
