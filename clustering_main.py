@@ -163,8 +163,8 @@ with st.sidebar:
     
     choice= option_menu(
         menu_title="Nội dung", 
-        options=["Giới thiệu đề tài", "Thu thập và hiểu dữ liệu", "Tiền xử lý dữ liệu", "Xây dựng mô hình", "Dự đoán và đánh giá"], 
-        icons=["house", "bar-chart", "gift"], 
+        options=["Giới thiệu đề tài", "Hiểu dữ liệu", "Tiền xử lý dữ liệu", "Xây dựng mô hình", "Dự đoán và đánh giá"], 
+        icons=["house", "bar-chart", "stack", "boxes","speedometer",], 
         menu_icon="cast", 
         default_index=0,
         styles={
