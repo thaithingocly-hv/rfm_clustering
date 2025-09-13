@@ -1,0 +1,9 @@
+streamlit
+streamlit-option-menu
+streamlit[charts]
+numpy
+pandas
+matplotlib
+seaborn
+scikit-learn
+squarify
