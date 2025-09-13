@@ -407,13 +407,44 @@ elif choice == "Dự đoán và đánh giá":
               'Frequency': [f_data], 
               'Monetary': [m_data]}
         df_predict = pd.DataFrame(data)
-        st.dataframe(df_predict)
+        #st.dataframe(df_predict)
         # Assign these labels to 4 equal percentile groups
-        r_groups = pd.qcut(df_predict['Recency'].rank(method='first'), q=4, labels=r_labels)
-        f_groups = pd.qcut(df_predict['Frequency'].rank(method='first'), q=4, labels=f_labels)
-        m_groups = pd.qcut(df_predict['Monetary'].rank(method='first'), q=4, labels=m_labels)
-        # Create new columns R, F, M
-        df_predict = df_predict.assign(R = r_groups.values, F = f_groups.values,  M = m_groups.values)
+        #r_groups = pd.qcut(df_predict['Recency'].rank(method='first'), q=4, labels=r_labels)
+        quantile = [0.25, 0.5, 0.75]
+        r_quantile = []
+        f_quantile = []
+        m_quantile = []
+        for q in quantile:
+            r_quantile.append(np.quantile(df_RFM['Recency'], q))
+            #st.write(f'r_quantitle = {r_quantile}')
+            f_quantile.append(np.quantile(df_RFM['Frequency'], q))
+            m_quantile.append(np.quantile(df_RFM['Monetary'], q))
+        
+        level = 1       
+        for rq in r_quantile:
+            if r_data < rq:
+                df_predict['R'] = level
+                level = level + 1
+            else:
+                df_predict['R'] = 4
+        
+        level = 1
+        for rq in f_quantile:
+            if f_data < rq:
+                df_predict['F'] = level
+                level = level + 1
+            else:
+                df_predict['F'] = 4
+        
+        for rq in r_quantile:
+            if m_data < rq:
+                df_predict['M'] = level
+                level = level + 1
+            else:
+                df_predict['M'] = 4
+        
+        st.dataframe(df_predict)
+        
         # Create RFM_Segment column by concatenating R, F, M
         def join_rfm(x): return str(int(x['R'])) + str(int(x['F'])) + str(int(x['M']))
         df_predict['RFM_Segment'] = df_predict.apply(join_rfm, axis=1)
