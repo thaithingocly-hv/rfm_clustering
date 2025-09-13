@@ -199,7 +199,7 @@ def footer():
 with st.sidebar:
     st.logo("img/logo.png",icon_image="img/logo.png")
     st.subheader("Đồ án Data Science")
-    st.markdown("[Trung tâm tin học](https://csc.edu.vn/) <br/>GVHD: Khuất Thùy Phương <br/>HV: Thái Thị Ngọc Lý", unsafe_allow_html=True)
+    st.markdown("[Trung tâm tin học](https://csc.edu.vn/) <br/>GVHD: Khuất Thùy Phương <br/>HV: :rainbow[Thái Thị Ngọc Lý]", unsafe_allow_html=True)
     
     choice= option_menu(
         menu_title="Nội dung", 
@@ -385,10 +385,56 @@ elif choice == "Xây dựng mô hình":
     # st.write(f"Calinski-Harabasz Index: {ch_score:.2f} (higher is better)")
 elif choice == "Dự đoán và đánh giá":
     st.write("Dự đoán và đánh giá |")
-    st.subheader("**Cung cấp dữ liệu**")
-    r = st.slider("Thời gian gần đây", 1, 700, 20)
-    f = st.slider("Số lượng giao dịch", 1, 700, 20)
-    m = st.slider("Tổng giá trị giao dịch", 1, 700, 20)
+    st.markdown("**Cung cấp dữ liệu**")
+    r_data = st.slider("Thời gian gần đây", 1, 700, 20)
+    f_data = st.slider("Số lượng giao dịch", 1, 700, 20)
+    m_data = st.slider("Tổng giá trị giao dịch", 1, 700, 20)
+    
+    st.markdown("**Chọn mô hình**")
+    mh = st.radio(
+    "Các dạng RFM",
+    ["Manual RFM", "RFM + KMeans", "RFM + Hierachical"],
+    # captions=[
+    #     "Laugh out loud.",
+    #     "...",
+    #     "Never stop learning.",
+    # ],
+    )
+
+    if mh == "Manual RFM":
+        st.write("Mô hình được chọn: Manual RFM.")
+        data={'Recency': [r_data],
+              'Frequency': [f_data], 
+              'Monetary': [m_data]}
+        df_predict = pd.DataFrame(data)
+        st.dataframe(df_predict)
+        # Assign these labels to 4 equal percentile groups
+        r_groups = pd.qcut(df_predict['Recency'].rank(method='first'), q=4, labels=r_labels)
+        f_groups = pd.qcut(df_predict['Frequency'].rank(method='first'), q=4, labels=f_labels)
+        m_groups = pd.qcut(df_predict['Monetary'].rank(method='first'), q=4, labels=m_labels)
+        # Create new columns R, F, M
+        df_predict = df_predict.assign(R = r_groups.values, F = f_groups.values,  M = m_groups.values)
+        # Create RFM_Segment column by concatenating R, F, M
+        def join_rfm(x): return str(int(x['R'])) + str(int(x['F'])) + str(int(x['M']))
+        df_predict['RFM_Segment'] = df_predict.apply(join_rfm, axis=1)
+        # calculate RFM_Segment counts
+        #rfm_count_unique = df_predict.groupby('RFM_Segment')['RFM_Segment'].nunique()
+        # Calculate RFM_Score
+        df_predict['RFM_Score'] = df_predict[['R','F','M']].sum(axis=1)
+        processing_time = []
+        # Create a new column RFM_Level
+        start_t = time.time()
+        df_predict['RFM_Level'] = df_predict.apply(rfm_level, axis=1)
+        processing_t = (time.time() - start_t)
+        st.write(f"*Kết quả dự đoán là* {df_predict['RFM_Level']}")
+        
+        
+    elif mh == "RFM + KMeans":
+        st.write("Mô hình được chọn: RFM + KMeans.")
+        
+    else:
+        st.write("Mô hình được chọn: RFM + Hierachical.")
+
 
 st.sidebar.markdown("""<div style="text-align: center;">09.2025</div>""", unsafe_allow_html=True)
 # main
